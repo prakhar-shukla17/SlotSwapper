@@ -2,6 +2,7 @@ import SwapRequest from '../models/SwapRequest.js';
 import Event from '../models/Event.js';
 import AppError from '../utils/AppError.js';
 import mongoose from 'mongoose';
+import { getIO } from '../socket.js';
 
 
 
@@ -104,12 +105,37 @@ export const createSwapRequest = async (req, res, next) => {
       message
     }], { session });
 
+    const requesterEventData = requesterEvent.toObject();
+    const requestedEventData = requestedEvent.toObject();
+    const swapRequestId = swapRequest[0]._id;
+
     await session.commitTransaction();
     session.endSession();
 
+    const populatedSwapRequest = await SwapRequest.findById(swapRequestId)
+      .populate('requester', 'name email')
+      .populate('requestedTo', 'name email')
+      .populate('requesterEvent', 'title date startTime endTime')
+      .populate('requestedEvent', 'title date startTime endTime');
+
+    const io = getIO();
+    io.emit('events:statusChanged', {
+      event: requesterEventData,
+      userId: requester.toString(),
+    });
+    io.emit('events:statusChanged', {
+      event: requestedEventData,
+      userId: requestedEvent.user.toString(),
+    });
+
+    io.to(requestedEvent.user.toString()).emit('swaps:new', {
+      swapRequest: populatedSwapRequest,
+      actorId: requester.toString(),
+    });
+
     res.status(201).json({
       status: 'success',
-      data: { swapRequest: swapRequest[0] }
+      data: { swapRequest: populatedSwapRequest }
     });
   } catch (error) {
     await session.abortTransaction();
@@ -277,12 +303,42 @@ export const respondToSwapRequest = async (req, res, next) => {
       swapRequest.requestedEvent.save({ session })
     ]);
 
+    const requesterEventData = swapRequest.requesterEvent.toObject();
+    const requestedEventData = swapRequest.requestedEvent.toObject();
+    const swapRequestId = swapRequest._id;
+    const targetStatus = swapRequest.status;
+
     await session.commitTransaction();
     session.endSession();
 
+    const populatedSwapRequest = await SwapRequest.findById(swapRequestId)
+      .populate('requester', 'name email')
+      .populate('requestedTo', 'name email')
+      .populate('requesterEvent', 'title date startTime endTime')
+      .populate('requestedEvent', 'title date startTime endTime');
+
+    const io = getIO();
+    io.emit('events:statusChanged', {
+      event: requesterEventData,
+      userId: swapRequest.requester.toString(),
+    });
+    io.emit('events:statusChanged', {
+      event: requestedEventData,
+      userId: swapRequest.requestedTo.toString(),
+    });
+
+    const payload = {
+      swapRequest: populatedSwapRequest,
+      action: targetStatus,
+      actorId: userId.toString(),
+    };
+
+    io.to(swapRequest.requester.toString()).emit('swaps:updated', payload);
+    io.to(swapRequest.requestedTo.toString()).emit('swaps:updated', payload);
+
     res.status(200).json({
       status: 'success',
-      data: { swapRequest }
+      data: { swapRequest: populatedSwapRequest }
     });
   } catch (error) {
     await session.abortTransaction();
@@ -325,14 +381,49 @@ export const cancelSwapRequest = async (req, res, next) => {
       await swapRequest.requestedEvent.save({ session });
     }
 
+    const requesterEventData = swapRequest.requesterEvent ? swapRequest.requesterEvent.toObject() : null;
+    const requestedEventData = swapRequest.requestedEvent ? swapRequest.requestedEvent.toObject() : null;
+    const swapRequestId = swapRequest._id;
+
     await swapRequest.save({ session });
 
     await session.commitTransaction();
     session.endSession();
 
+    const populatedSwapRequest = await SwapRequest.findById(swapRequestId)
+      .populate('requester', 'name email')
+      .populate('requestedTo', 'name email')
+      .populate('requesterEvent', 'title date startTime endTime')
+      .populate('requestedEvent', 'title date startTime endTime');
+
+    const io = getIO();
+
+    if (requesterEventData) {
+      io.emit('events:statusChanged', {
+        event: requesterEventData,
+        userId: swapRequest.requester.toString(),
+      });
+    }
+
+    if (requestedEventData) {
+      io.emit('events:statusChanged', {
+        event: requestedEventData,
+        userId: swapRequest.requestedTo.toString(),
+      });
+    }
+
+    const payload = {
+      swapRequest: populatedSwapRequest,
+      action: 'cancelled',
+      actorId: swapRequest.requester.toString(),
+    };
+
+    io.to(swapRequest.requester.toString()).emit('swaps:updated', payload);
+    io.to(swapRequest.requestedTo.toString()).emit('swaps:updated', payload);
+
     res.status(200).json({
       status: 'success',
-      data: { swapRequest }
+      data: { swapRequest: populatedSwapRequest }
     });
   } catch (error) {
     await session.abortTransaction();

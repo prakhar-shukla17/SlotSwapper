@@ -17,8 +17,18 @@ export const initSocket = (httpServer) => {
   ioInstance.on('connection', (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
+    socket.on('user:identify', ({ userId }) => {
+      if (!userId) return;
+      socket.data.userId = userId.toString();
+      socket.join(socket.data.userId);
+      socket.emit('user:identified', { userId: socket.data.userId });
+    });
+
     socket.on('disconnect', (reason) => {
       console.log(`Socket disconnected: ${socket.id} (${reason})`);
+      if (socket.data?.userId) {
+        socket.leave(socket.data.userId);
+      }
     });
   });
 
