@@ -9,7 +9,7 @@
     "dev": "nodemon src/server.js",
     "lint": "eslint . --ext .js",
     "format": "prettier --write \"**/*.js\"",
-    "prepare": "husky install"
+    "prepare": "[ -d .git ] && husky install || echo 'Skipping husky install (no .git directory)'"
   },
   "keywords": [
     "scheduling",
