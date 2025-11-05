@@ -39,4 +39,4 @@ const swapRequestSchema = new mongoose.Schema({
 
 const SwapRequest = mongoose.model('SwapRequest', swapRequestSchema);
 
-module.exports = SwapRequest;
+export default SwapRequest;

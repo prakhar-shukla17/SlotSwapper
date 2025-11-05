@@ -5,7 +5,7 @@ import {
   getEvent, 
   updateEvent, 
   deleteEvent,
-  getEventsByStatus
+  updateEventStatus
 } from '../controllers/event.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 
@@ -19,12 +19,12 @@ router.route('/')
   .post(createEvent)
   .get(getEvents);
 
-router.route('/status/:status')
-  .get(getEventsByStatus);
 
 router.route('/:id')
   .get(getEvent)
   .patch(updateEvent)
   .delete(deleteEvent);
 
+
+router.patch('/:id/status', updateEventStatus);
 export default router;

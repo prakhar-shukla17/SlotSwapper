@@ -234,51 +234,34 @@ export const deleteEvent = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-      return next(new AppError('No event found with that ID', 404));
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        event
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
-export const deleteEvent = async (req, res, next) => {
+
+
+export const updateEventStatus = async (req, res, next) => {
   try {
-    const event = await Event.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    const { status } = req.body;
+    const event = await Event.findOne({
+      _id: req.params.id,
+      user: req.user.id
+    });
 
     if (!event) {
-      return next(new AppError('No event found with that ID', 404));
+      return next(new AppError('No event found with that ID or you are not authorized', 404));
     }
 
-    res.status(204).json({
-      status: 'success',
-      data: null
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+    // Validate the status
+    if (!['busy', 'swappable', 'swap_pending'].includes(status)) {
+      return next(new AppError('Invalid status. Must be one of: busy, swappable, swap_pending', 400));
+    }
 
-export const getEventsByStatus = async (req, res, next) => {
-  try {
-    const { status } = req.params;
-    const events = await Event.find({ 
-      user: req.user.id,
-      status: status.toLowerCase()
-    });
+    // Update the status
+    event.status = status;
+    await event.save();
 
     res.status(200).json({
       status: 'success',
-      results: events.length,
-      data: {
-        events
-      }
+      data: { event }
     });
   } catch (error) {
     next(error);

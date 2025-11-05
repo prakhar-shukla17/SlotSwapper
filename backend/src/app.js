@@ -2,13 +2,12 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import path from 'path';
-import { fileURLToPath } from 'url';
+
 
 // Import routes
 import authRouter from './routes/auth.routes.js';
 import eventRouter from './routes/event.routes.js';
-// import swapRoutes from './routes/swap.routes.js';
+import swapRoutes from './routes/swap.routes.js';
 
 // Initialize express app
 const app = express();
@@ -40,7 +39,7 @@ app.get('/api/v1/health', (req, res) => {
 // Mount routers
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/events', eventRouter);
-// app.use('/api/v1/swaps', swapRoutes);
+app.use('/api/v1/swaps', swapRoutes);
 
 // 404 handler
 app.use((req, res) => {
