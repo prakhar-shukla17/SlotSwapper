@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Login from "./pages/Auth/Login";
+import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import MyEvents from "./pages/Dashboard/MyEvents";
 import Marketplace from "./pages/Dashboard/Marketplace";
