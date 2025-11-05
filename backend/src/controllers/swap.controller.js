@@ -1,6 +1,6 @@
 import SwapRequest from '../models/SwapRequest.js';
 import Event from '../models/Event.js';
-import AppError from '../utils/AppError.js';
+import AppError from '../utils/appError.js';
 import mongoose from 'mongoose';
 import { getIO } from '../socket.js';
 
