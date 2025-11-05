@@ -1,5 +1,6 @@
 import Event from '../models/Event.js';
 import AppError from '../utils/appError.js';
+import { getIO } from '../socket.js';
 
 //  validate time format and order
 const validateEventTimes = (startTime, endTime) => {
@@ -78,6 +79,11 @@ export const createEvent = async (req, res, next) => {
       location,
       isRecurring,
       recurringPattern: isRecurring ? recurringPattern : null
+    });
+
+    getIO().emit('events:created', {
+      event,
+      userId: req.user.id,
     });
 
     res.status(201).json({
@@ -205,6 +211,11 @@ export const updateEvent = async (req, res, next) => {
 
     await event.save();
 
+    getIO().emit('events:updated', {
+      event,
+      userId: req.user.id,
+    });
+
     res.status(200).json({
       message: 'Event updated successfully',
       data: {
@@ -226,6 +237,11 @@ export const deleteEvent = async (req, res, next) => {
     if (!event) {
       return next(new AppError('No event found with that ID', 404));
     }
+
+    getIO().emit('events:deleted', {
+      eventId: event._id,
+      userId: req.user.id,
+    });
 
     res.status(204).json({
       message: 'Event deleted successfully',
@@ -258,6 +274,11 @@ export const updateEventStatus = async (req, res, next) => {
     // Update the status
     event.status = status;
     await event.save();
+
+    getIO().emit('events:statusChanged', {
+      event,
+      userId: req.user.id,
+    });
 
     res.status(200).json({
       status: 'success',

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import app from './app.js';
+import { initSocket } from './socket.js';
 
 // Environment variables
 const PORT = process.env.PORT || 5000;
@@ -24,6 +25,8 @@ const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`http://localhost:${PORT}`);
 });
+
+initSocket(server);
 
 // Unhandled promise rejections
 process.on('unhandledRejection', (err) => {

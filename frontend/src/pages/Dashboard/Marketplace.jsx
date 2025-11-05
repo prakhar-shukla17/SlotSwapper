@@ -3,6 +3,8 @@ import Navbar from "../../components/Navbar";
 import useSwapStore from "../../store/swapStore";
 import useEventStore from "../../store/eventStore";
 import { formatDateTime } from "../../utils/dateTime";
+import { useSocket } from "../../context/SocketContext.jsx";
+import useAuthStore from "../../store/authStore";
 
 export default function Marketplace() {
   const { swappableSlots, fetchSwappableSlots, createSwapRequest, isLoading, error } = useSwapStore();
@@ -10,11 +12,34 @@ export default function Marketplace() {
   const [selectedMySlot, setSelectedMySlot] = useState(null);
   const [selectedTheirSlot, setSelectedTheirSlot] = useState(null);
   const [message, setMessage] = useState("");
+  const socket = useSocket();
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     fetchSwappableSlots();
     fetchEvents();
   }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRefresh = ({ userId }) => {
+      if (userId && user && userId === user.id) return;
+      fetchSwappableSlots();
+    };
+
+    socket.on("events:created", handleRefresh);
+    socket.on("events:updated", handleRefresh);
+    socket.on("events:deleted", handleRefresh);
+    socket.on("events:statusChanged", handleRefresh);
+
+    return () => {
+      socket.off("events:created", handleRefresh);
+      socket.off("events:updated", handleRefresh);
+      socket.off("events:deleted", handleRefresh);
+      socket.off("events:statusChanged", handleRefresh);
+    };
+  }, [socket, fetchSwappableSlots, user]);
 
   const handleSwap = async () => {
     if (!selectedMySlot || !selectedTheirSlot) {
