@@ -126,6 +126,7 @@ export const createSwapRequest = async (req, res, next) => {
 export const getSentSwapRequests = async (req, res, next) => {
   try {
     const sentRequests = await SwapRequest.find({ requester: req.user.id })
+      .populate('requester', 'name email')
       .populate('requestedTo', 'name email')
       .populate('requesterEvent', 'title date startTime endTime')
       .populate('requestedEvent', 'title date startTime endTime')
@@ -146,6 +147,7 @@ export const getReceivedSwapRequests = async (req, res, next) => {
   try {
     const receivedRequests = await SwapRequest.find({ requestedTo: req.user.id })
       .populate('requester', 'name email')
+      .populate('requestedTo', 'name email')
       .populate('requesterEvent', 'title date startTime endTime')
       .populate('requestedEvent', 'title date startTime endTime')
       .sort('-createdAt');
@@ -226,10 +228,20 @@ export const respondToSwapRequest = async (req, res, next) => {
 
     // 3) Handle the events based on the response
     if (accepted) {
-      // Swap the owners of the events
-      const tempOwner = swapRequest.requesterEvent.user;
-      swapRequest.requesterEvent.user = swapRequest.requestedEvent.user;
-      swapRequest.requestedEvent.user = tempOwner;
+      // Swap only the scheduling details between the events while keeping their metadata intact
+      const requesterSchedule = {
+        date: swapRequest.requesterEvent.date,
+        startTime: swapRequest.requesterEvent.startTime,
+        endTime: swapRequest.requesterEvent.endTime
+      };
+
+      swapRequest.requesterEvent.date = swapRequest.requestedEvent.date;
+      swapRequest.requesterEvent.startTime = swapRequest.requestedEvent.startTime;
+      swapRequest.requesterEvent.endTime = swapRequest.requestedEvent.endTime;
+
+      swapRequest.requestedEvent.date = requesterSchedule.date;
+      swapRequest.requestedEvent.startTime = requesterSchedule.startTime;
+      swapRequest.requestedEvent.endTime = requesterSchedule.endTime;
 
       // Set both events back to busy
       swapRequest.requesterEvent.status = 'busy';
@@ -281,29 +293,50 @@ export const respondToSwapRequest = async (req, res, next) => {
 
 // Cancel a swap request
 export const cancelSwapRequest = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const swapRequest = await SwapRequest.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        requester: req.user.id,
-        status: 'pending'
-      },
-      { 
-        status: 'cancelled',
-        respondedAt: Date.now()
-      },
-      { new: true }
-    );
+    const swapRequest = await SwapRequest.findOne({
+      _id: req.params.id,
+      requester: req.user.id,
+      status: 'pending'
+    })
+      .populate('requesterEvent')
+      .populate('requestedEvent')
+      .session(session);
 
     if (!swapRequest) {
+      await session.abortTransaction();
+      session.endSession();
       return next(new AppError('No pending swap request found with that ID or you are not authorized to cancel it', 404));
     }
 
+    swapRequest.status = 'cancelled';
+    swapRequest.respondedAt = new Date();
+
+    if (swapRequest.requesterEvent) {
+      swapRequest.requesterEvent.status = 'swappable';
+      await swapRequest.requesterEvent.save({ session });
+    }
+
+    if (swapRequest.requestedEvent) {
+      swapRequest.requestedEvent.status = 'swappable';
+      await swapRequest.requestedEvent.save({ session });
+    }
+
+    await swapRequest.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
     res.status(200).json({
       status: 'success',
-      data: null
+      data: { swapRequest }
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     next(error);
   }
 };

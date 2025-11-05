@@ -1,21 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import "@radix-ui/themes/styles.css";
-import { Theme,Button } from "@radix-ui/themes";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Auth/Login";
+import Register from "./pages/Auth/Register";
+import MyEvents from "./pages/Dashboard/MyEvents";
+import Marketplace from "./pages/Dashboard/Marketplace";
+import Requests from "./pages/Dashboard/Requests";
+import Landing from "./pages/Landing";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-function App() {
-  const [count, setCount] = useState(0)
-
+export default function App() {
   return (
-    <>
-      <Theme>
-    <Button variant="">Edit profile</Button>
-    </Theme>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-    </>
-  )
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<MyEvents />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/requests" element={<Requests />} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
-
-export default App
