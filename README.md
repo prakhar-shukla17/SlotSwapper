@@ -88,10 +88,24 @@ The Vite dev server runs on `http://localhost:5173` by default and proxies API c
 3. Launch the frontend (`npm run dev` in `frontend/`).
 4. Open `http://localhost:5173` and register/login to begin testing.
 
-Optional scripts:
+### Docker Compose (One-Command Setup)
 
-- `npm run lint` (frontend/backend) – ensure code quality.
-- `npm run build` (frontend) – generate production bundle.
+> Make sure Docker Desktop (or an equivalent engine) is running.
+
+```bash
+docker compose up --build
+```
+
+This starts three containers:
+
+| Service    | Description                         | Port |
+|------------|-------------------------------------|------|
+| backend    | Express API + Socket.IO             | 5000 |
+| frontend   | Vite dev server (hot reload enabled)| 5173 |
+| mongo      | MongoDB database                    | 27017 |
+
+The frontend container points to `http://backend:5000`, so once all services are healthy you can visit `http://localhost:5173` in your browser as usual. To stop everything, press `Ctrl+C` and run `docker compose down` to clean up containers (the MongoDB data persists in the named `mongo-data` volume).
+
 
 ## API Reference
 
@@ -147,21 +161,19 @@ The client listens to these channels, refreshes the relevant stores (events/swap
 
 ## Assumptions
 
-- Users operate within a single organisation; email-based registration is sufficient.
-- Events use 24-hour `HH:mm` strings and represent same-day scheduling (no cross-day validation implemented).
-- JWT authentication uses HTTP-only cookies; HTTPS termination is handled upstream in production.
-- No seed data is provided; testers will create events manually.
+- The system assumes all users belong to the same organization or workspace.Everyone can potentially view or request swaps with everyone else.
+- Events occur within a single day.Events use a 24-hour HH:mm format and do not span across days
+- The system assumes all users are in the same timezone.
+- While users’ full calendars are private, events marked as “swappable” become visible to other users in the public marketplace.
+
 
 ## Challenges & Future Enhancements
 
-- **Realtime Consistency:** Coordinating event status transitions across multiple clients required transactional updates and duplicate-event guards on the client.
-- **Socket Identification:** Introduced explicit `user:identify` handshake to route notifications to the correct user room.
-- **UI/UX Modernisation:** Tailwind 4 utilities replaced third-party component libraries to prevent compatibility issues while keeping the design modern.
-- **Potential Improvements:**
-  - Add comprehensive automated tests for swap edge cases.
-  - Provide pagination/filters for large event sets.
-  - Implement email notifications alongside in-app toasts.
-
+- **Making sure both events swap correctly**: When someone accepts a request, we have to swap just the dates and times and leave the titles or descriptions alone. I used MongoDB transactions so both event updates happen together—otherwise one event could change and the other might fail.
+- **Keeping event statuses in sync**: Events bounce between swappable, swap_pending, and busy. I got confused a few times, especially when a swap was cancelled or rejected—I had to double-check that both events went back to swappable so the marketplace stayed accurate.
+- **Blocking duplicate swap requests**: At first users could accidentally send multiple pending requests for the same pair of events. I added a backend check to stop that, then reloaded the lists right after each action so everyone sees the latest state.
+- **Identifying users over Socket.IO**: I learned that sockets don’t automatically know which user is connected. I had to emit a user:identify event right after login so the server could join that socket to a room based on the user ID. Without that, notifications were going to the wrong people.
+- **Dealing with reconnections**: When the browser refreshed, the socket reconnected but lost the room info. Re-sending the identify event on each connection made sure private notifications started flowing again.
 ---
 
 > Once the repository is public, update the repository link above and share it with reviewers alongside this README for a smooth verification process.
