@@ -1,6 +1,6 @@
 # SlotSwapper
 
-> Repository: https://github.com/your-username/SlotSwapper *(replace with the actual public URL once pushed)*
+
 
 SlotSwapper is a peer-to-peer time-slot scheduling platform that helps teams coordinate meetings by marking events as swappable, proposing exchanges, and handling requests in real time. The project consists of an Express/MongoDB backend and a React/Vite frontend connected via REST APIs and Socket.IO to deliver instant marketplace updates and notifications.
 
@@ -175,5 +175,3 @@ The client listens to these channels, refreshes the relevant stores (events/swap
 - **Identifying users over Socket.IO**: I learned that sockets don’t automatically know which user is connected. I had to emit a user:identify event right after login so the server could join that socket to a room based on the user ID. Without that, notifications were going to the wrong people.
 - **Dealing with reconnections**: When the browser refreshed, the socket reconnected but lost the room info. Re-sending the identify event on each connection made sure private notifications started flowing again.
 ---
-
-> Once the repository is public, update the repository link above and share it with reviewers alongside this README for a smooth verification process.
