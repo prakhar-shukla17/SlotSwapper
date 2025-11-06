@@ -7,8 +7,7 @@ export const initSocket = (httpServer) => {
     cors: {
       origin: [
         process.env.CLIENT_URL,
-        'http://localhost:3000',
-        'http://localhost:5173'
+        
       ].filter(Boolean),
       credentials: true
     }

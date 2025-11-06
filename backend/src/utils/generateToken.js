@@ -16,7 +16,7 @@ export const generateToken = (user, res) => {
     res.cookie('jwt', token, {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
       httpOnly: true, // Prevent XSS attacks
-      sameSite: 'strict', // CSRF protection
+      sameSite: 'none', // CSRF protection
       secure: NODE_ENV === 'production', // HTTPS only in production
     });
 
@@ -41,7 +41,7 @@ export const verifyToken = (token) => {
 export const clearToken = (res) => {
   res.clearCookie('jwt', {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'none',
     secure: NODE_ENV === 'production',
   });
 };
